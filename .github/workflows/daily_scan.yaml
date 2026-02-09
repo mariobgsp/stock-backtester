@@ -1,0 +1,55 @@
+name: Daily Stock Scanner
+
+on:
+  # 1. Manual Trigger (Run from GitHub UI)
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: 'Custom Tickers (comma separated)'
+        required: false
+        default: 'BBCA, BBRI, BMRI, TLKM, GOTO, ASII'
+  
+  # 2. Scheduled Trigger (Cron Syntax)
+  # Runs at 00:00 UTC (07:00 WIB) every Monday-Friday
+  schedule:
+    - cron: '0 0 * * 1-5'
+
+jobs:
+  scan-stocks:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip' # Caches dependencies for faster runs
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas yfinance scipy
+
+      - name: Run Scanner (Default List)
+        if: github.event_name == 'schedule'
+        # Edit this list to change your daily defaults
+        run: |
+          for ticker in BBCA BBRI BMRI TLKM GOTO ASII ADRO UNTR; do
+            echo "---------------------------------------------------"
+            python3 scanner.py $ticker
+          done
+
+      - name: Run Scanner (Manual Input)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          # Convert comma-separated input to space-separated
+          IFS=',' read -ra ADDR <<< "${{ inputs.tickers }}"
+          for ticker in "${ADDR[@]}"; do
+            # Trim whitespace
+            ticker=$(echo $ticker | xargs)
+            echo "---------------------------------------------------"
+            python3 scanner.py $ticker
+          done
